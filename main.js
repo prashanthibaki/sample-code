@@ -1,107 +1,101 @@
-// Import Firebase functions 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js"; 
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js"; 
-import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js"; 
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-storage.js"; 
- 
-// Firebase config 
- const firebaseConfig = {
-    apiKey: "AIzaSyBVBnuyoNMXCL_9EnCOwmpK90cRjc09B4M",
-    authDomain: "class1-2c725.firebaseapp.com",
-    projectId: "class1-2c725",
-    storageBucket: "class1-2c725.appspot.com",
-    messagingSenderId: "494137059623",
-    appId: "1:494137059623:web:650e5e0d6c13a197532102",
-    measurementId: "G-MRN0HGVY2N"
-  };
-
- 
-// Initialize Firebase 
-const app = initializeApp(firebaseConfig); 
-const auth = getAuth(app); 
-const storage = getStorage(app); 
-const db = getFirestore(app); 
- 
-const loginButton = document.getElementById('login-btn'); 
-const logoutButton = document.getElementById('logout-btn'); 
-const userName = document.getElementById('user-name'); 
-const uploadSection = document.getElementById('upload-section'); 
-const imageInput = document.getElementById('imageInput'); 
-const output = document.getElementById('output'); 
-const imagesContainer = document.getElementById('images-container'); 
- 
-// Google sign-in 
-function signInWithGoogle() { 
-    const provider = new GoogleAuthProvider(); 
-    signInWithPopup(auth, provider) 
-        .then(result => { 
-            const user = result.user; 
-            userName.innerText = Hello, ${user.displayName}; 
-            loginButton.style.display = 'none'; 
-            logoutButton.style.display = 'block'; 
-            uploadSection.style.display = 'block'; 
-            fetchImages();  // Fetch images when logged in 
-        }) 
-        .catch(error => { 
-            console.error('Error during sign-in:', error.message); 
-        }); 
-} 
- 
-// Sign out 
-function logoutUser() { 
-    firebaseSignOut(auth).then(() => { 
-        userName.innerText = 'Not logged in'; 
-        loginButton.style.display = 'block'; 
-        logoutButton.style.display = 'none'; 
-        uploadSection.style.display = 'none'; 
-        imagesContainer.innerHTML = '';  // Clear images when logged out 
-    }); 
-} 
- 
-// Upload image to Firebase Storage and save details to Firestore 
-async function uploadImage() { 
-    const file = imageInput.files[0]; 
-    if (!file) { 
-        alert('Please select an image to upload'); 
-        return; 
-    } 
- 
-    const storageRef = ref(storage, `images/${file.name}`); 
-    const uploadTask = uploadBytesResumable(storageRef, file); 
- 
-    uploadTask.on('state_changed', 
-        (snapshot) => { 
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100; 
-            console.log('Upload is ' + progress + '% done'); 
-        }, 
-        (error) => { 
-            console.error('Error uploading image:', error); 
-        }, 
-        async () => { 
-            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref); 
- 
-            const { uid, displayName } = auth.currentUser; 
- 
-            // Save image info in Firestore 
-            await addDoc(collection(db, 'uploadedImages'), { 
-                imageUrl: downloadURL, 
-                userName: displayName, 
-                userId: uid, 
-                timestamp: new Date() 
-            }); 
- 
-            fetchImages();  // Fetch images after uploading 
+updated index.html code:
+<!DOCTYPE html> 
+<html lang="en"> 
+<head> 
+    <meta charset="UTF-8"> 
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+    <title>Firebase Image Upload</title> 
+    <style> 
+        /* Simple styles for buttons and sections */ 
+        #login-btn, #logout-btn, #upload-section { 
+            margin: 20px; 
         } 
-    ); 
-} 
+        #images-container div { 
+            margin-bottom: 20px; 
+            padding: 10px; 
+            border: 1px solid #ddd; 
+            border-radius: 5px; 
+            max-width: 320px; 
+        } 
+        #images-container img { 
+            display: block; 
+            max-width: 100%; 
+            margin: 10px 0; 
+        } 
+        .progress-bar { 
+            width: 100%; 
+            background-color: #ddd; 
+            border-radius: 5px; 
+            overflow: hidden; 
+            margin-top: 10px; 
+        } 
+        .progress-bar div { 
+            height: 10px; 
+            background-color: #4caf50; 
+            width: 0%; 
+        } 
+    </style> 
+</head> 
+<body> 
+    <h1>Firebase Image Upload Example</h1> 
+    <p id="user-name">Not logged in</p> 
+     
+    <!-- Login Button --> 
+    <button id="login-btn" onclick="signInWithGoogle()">Login with Google</button> 
+     
+    <!-- Logout Button --> 
+    <button id="logout-btn" style="display:none;" onclick="logoutUser()">Logout</button> 
+     
+    <!-- Image Upload Section --> 
+    <div id="upload-section" style="display:none;"> 
+        <input type="file" id="imageInput"> 
+        <button onclick="uploadImage()">Upload Image</button> 
+        <div class="progress-bar" id="progress-bar"><div></div></div> 
+        <div id="output"></div> 
+    </div> 
  
-// Fetch all images from Firestore and display them 
-async function fetchImages() { 
-    const querySnapshot = await getDocs(collection(db, 'uploadedImages')); 
-    imagesContainer.innerHTML = '';  // Clear current images 
+    <!-- Images Display Section --> 
+    <h2>Uploaded Images</h2> 
+    <div id="images-container"></div> 
  
-    querySnapshot.forEach((doc) => { 
-        const imageData = doc.data(); 
-        imagesContainer.innerHTML += ` 
-            <div> 
-                <p>Uploaded by: ${imageData.userName}</p>
+    <script type="module"> 
+        // Import Firebase functions 
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js"; 
+        import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js"; 
+        import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js"; 
+        import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-storage.js"; 
+ 
+        // Firebase config 
+        const firebaseConfig = { 
+            apiKey: "AIzaSyBqol7KbGT5p7ppA9z1zu0d7YiIxkaEm1Q", 
+            authDomain: "sample-309eb.firebaseapp.com", 
+            projectId: "sample-309eb", 
+            storageBucket: "sample-309eb.appspot.com", 
+            messagingSenderId: "971052026993", 
+            appId: "1:971052026993:web:a79d9b0f6f06b08a105fd0", 
+            measurementId: "G-63M6TRFSL3" 
+        }; 
+ 
+        // Initialize Firebase 
+        const app = initializeApp(firebaseConfig); 
+        const auth = getAuth(app); 
+        const storage = getStorage(app); 
+        const db = getFirestore(app); 
+ 
+        const loginButton = document.getElementById('login-btn'); 
+        const logoutButton = document.getElementById('logout-btn'); 
+        const userName = document.getElementById('user-name'); 
+        const uploadSection = document.getElementById('upload-section'); 
+        const imageInput = document.getElementById('imageInput'); 
+        const output = document.getElementById('output'); 
+        const imagesContainer = document.getElementById('images-container'); 
+        const progressBar = document.getElementById('progress-bar').firstElementChild; 
+ 
+        // Listen for auth state changes to update the UI accordingly 
+        onAuthStateChanged(auth, (user) => { 
+            if (user) { 
+                userName.innerText = Hello, ${user.displayName}; 
+                loginButton.style.display = 'none'; 
+                logoutButton.style.display = 'block'; 
+                uploadSection.style.display = 'block'; 
+                fetchImages();  // Fetch images
